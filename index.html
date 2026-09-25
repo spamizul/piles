@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Piles">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Piles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400&family=Figtree:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --fond:#FFFFFF; --texte:#25273A; --doux:#A3A6BA; --ligne:#EDEEF5;
+  --lavande:#94ABF2; --clair:#B4C6FE; --pale:#E6ECFF; --rouge:#D9674E;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--fond);color:var(--texte);font-family:"Figtree",system-ui,sans-serif;font-size:16px;line-height:1.45;padding-inline:24px;padding-block:calc(28px + env(safe-area-inset-top,0px)) calc(40px + env(safe-area-inset-bottom,0px))}
+main{max-width:440px;margin:0 auto;min-height:calc(100vh - 80px);display:flex;flex-direction:column}
+.titre{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;letter-spacing:-.01em}
+button{font:inherit;cursor:pointer;color:inherit;background:none;border:0;padding:0;-webkit-tap-highlight-color:transparent}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--lavande);outline-offset:3px;border-radius:6px}
+
+/* en-tête */
+header{display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:"Unbounded",system-ui,sans-serif;font-weight:400;font-size:20px;letter-spacing:-.01em}
+nav{display:flex;gap:16px;font-size:14px}
+nav button{color:var(--doux);padding:6px 0}
+nav button[aria-selected="true"]{color:var(--texte)}
+
+.page{flex:1;display:flex;flex-direction:column}
+.phrase{margin:64px 0 0;font-size:30px;line-height:1.25;white-space:pre-line;text-wrap:balance}
+
+/* barres */
+.barres{margin-top:48px;display:grid;gap:6px;align-items:end;height:150px}
+.jour{height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px;min-width:0}
+.barre{width:100%;border-radius:8px}
+.lettre{font-size:12px;color:var(--doux)}
+.lettre.auj{color:var(--texte)}
+
+.lignes{margin-top:26px}
+.info{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid var(--ligne);font-size:15px;font-variant-numeric:tabular-nums}
+.info span:first-child{color:var(--doux)}
+
+.bas{margin-top:auto;padding-top:32px;display:flex;flex-direction:column;align-items:stretch}
+.principal{border-radius:999px;padding:17px 0;background:var(--clair);color:var(--texte);font-size:16px}
+.principal:active{transform:scale(.99)}
+.discret{color:var(--doux);font-size:14px;padding:12px;margin-top:8px}
+.autre{display:flex;gap:10px;align-items:center;margin-top:4px}
+input[type=date],input[type=time],select{font:inherit;color:var(--texte);background:transparent;border:0;border-bottom:1px solid var(--ligne);border-radius:0;padding:8px 2px;min-width:0}
+.autre input{flex:1}
+.petit-btn{border-radius:999px;padding:10px 18px;background:var(--pale);font-size:14px}
+
+/* données */
+h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;margin:44px 0 14px}
+.graph{width:100%;height:auto;display:block}
+.graph text{fill:var(--doux);font-size:11px;font-family:"Figtree",system-ui,sans-serif}
+.note{font-size:14px;color:var(--doux);margin:10px 0 0}
+.histo{list-style:none;margin:0;padding:0}
+.histo li{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--ligne);font-variant-numeric:tabular-nums;font-size:15px}
+.duree{color:var(--doux);font-size:14px}
+.suppr{color:var(--doux);font-size:16px;padding:4px 8px}
+.suppr.confirme{color:var(--rouge);font-size:14px}
+
+/* agenda */
+.mois{margin-top:44px;display:flex;align-items:center;justify-content:space-between}
+.mois b{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:18px;text-transform:capitalize}
+.fleche{font-size:22px;color:var(--doux);padding:6px 10px}
+.grille{margin-top:16px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));row-gap:4px;text-align:center}
+.jsem{font-size:12px;color:var(--doux);padding-bottom:6px}
+.case{width:100%;aspect-ratio:1;max-width:44px;margin:0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-variant-numeric:tabular-nums;border:1.5px solid transparent}
+.case.futur{color:var(--doux)}
+.case.porte{background:var(--pale)}
+.case.change{background:var(--lavande);color:var(--texte)}
+.case.prevu{border:1.5px dashed var(--lavande);color:var(--texte)}
+.case.prevu.p2{opacity:.7}.case.prevu.p3{opacity:.45}
+.case.auj{text-decoration:underline;text-underline-offset:4px}
+.case[aria-pressed="true"]{border-color:var(--texte);border-style:solid}
+.detail{min-height:1.5em;margin:14px 0 0;font-size:14px;color:var(--doux)}
+.choix{display:flex;gap:8px}
+.choix button{flex:1;padding:11px 0;border-radius:999px;color:var(--doux);font-size:15px}
+.choix button[aria-pressed="true"]{background:var(--pale);color:var(--texte)}
+.liens{display:flex;gap:10px;margin-top:14px}
+.lien{flex:1;text-align:center;text-decoration:none;color:var(--texte);border:1px solid var(--clair);border-radius:999px;padding:12px 0;font-size:15px}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--texte);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.vu{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+</head>
+<body>
+<main>
+  <header>
+    <span class="logo">piles</span>
+    <nav role="tablist" aria-label="Pages">
+      <button role="tab" id="t-pile" aria-controls="p-pile" aria-selected="true">Pile</button>
+      <button role="tab" id="t-data" aria-controls="p-data" aria-selected="false">Données</button>
+      <button role="tab" id="t-agenda" aria-controls="p-agenda" aria-selected="false">Agenda</button>
+    </nav>
+  </header>
+
+  <!-- PILE -->
+  <section class="page" id="p-pile" role="tabpanel" aria-labelledby="t-pile">
+    <p class="phrase titre" id="phrase" aria-live="polite"></p>
+    <div class="barres" id="barres" role="img" aria-label="Jours de la pile en cours"></div>
+    <div class="lignes">
+      <div class="info"><span>Prochain changement</span><span id="iProchain">–</span></div>
+      <div class="info"><span>Moyenne</span><span id="iMoy">–</span></div>
+    </div>
+    <div class="bas">
+      <button class="principal" id="btnAujourdhui">Pile changée</button>
+      <button class="discret" id="btnAutreJour" aria-expanded="false">Changée un autre jour</button>
+      <div class="autre" id="zoneAutre" hidden>
+        <input type="date" id="autreDate" aria-label="Date du changement">
+        <button class="petit-btn" id="btnAutre">Ajouter</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DONNÉES -->
+  <section class="page" id="p-data" role="tabpanel" aria-labelledby="t-data" hidden>
+    <p class="phrase titre" id="phraseData"></p>
+    <div class="lignes">
+      <div class="info"><span>Moyenne</span><span id="dMoy">–</span></div>
+      <div class="info"><span>Piles utilisées</span><span id="dNb">0</span></div>
+      <div class="info"><span>La plus longue</span><span id="dMax">–</span></div>
+      <div class="info"><span>La plus courte</span><span id="dMin">–</span></div>
+    </div>
+    <h2>Durée de chaque pile</h2>
+    <div id="graphDurees"></div>
+    <p class="note" id="tendance"></p>
+    <h2>Historique</h2>
+    <ul class="histo" id="histo"></ul>
+    <p class="note" id="histoVide">Rien pour l'instant.</p>
+    <div id="blocDefaut" class="info" style="margin-top:14px">
+      <label for="dureeDefaut" style="color:var(--doux)">Durée estimée d'une pile</label>
+      <select id="dureeDefaut"></select>
+    </div>
+  </section>
+
+  <!-- AGENDA -->
+  <section class="page" id="p-agenda" role="tabpanel" aria-labelledby="t-agenda" hidden>
+    <div class="mois">
+      <button class="fleche" id="moisPrec" aria-label="Mois précédent">‹</button>
+      <b id="moisTitre"></b>
+      <button class="fleche" id="moisSuiv" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="grille" id="grille"></div>
+    <p class="detail" id="detailJour"></p>
+
+    <h2>À venir</h2>
+    <div id="prochains"></div>
+
+    <h2>Rappel</h2>
+    <div class="choix" role="group" aria-label="Quand">
+      <button id="qVeille" aria-pressed="true">La veille</button>
+      <button id="qJour" aria-pressed="false">Le jour J</button>
+    </div>
+    <div class="info" style="margin-top:12px">
+      <label for="heure" style="color:var(--doux)" id="rappelTexte">À</label>
+      <input type="time" id="heure" value="09:00">
+    </div>
+    <div class="liens">
+      <a class="lien" id="lienGoogle" href="#" target="_blank" rel="noopener">Google Agenda</a>
+      <a class="lien" id="lienOutlook" href="#" target="_blank" rel="noopener">Outlook</a>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  const JOUR = 86400000, NB_MOYENNE = 6, CLE = "suivi-piles";
+  const LETTRES = ["D","L","M","M","J","V","S"];
+  let etat = { dates: [], dureeDefaut: 7 };
+  let db = null, qRappel = -1, suppArme = null, jourChoisi = null;
+  let moisVu = new Date(); moisVu.setDate(1);
+
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2,"0");
+  const iso = (d) => { const x = new Date(d); return x.getFullYear()+"-"+pad(x.getMonth()+1)+"-"+pad(x.getDate()); };
+  const versDate = (s) => { const [a,m,j] = s.split("-").map(Number); return new Date(a, m-1, j); };
+  const auj = () => versDate(iso(new Date()));
+  const ecart = (a, b) => Math.round((versDate(b) - versDate(a)) / JOUR);
+  const plusJours = (s, n) => iso(new Date(versDate(s).getTime() + n*JOUR + 12*3600000));
+  const fmt = (d, o) => d.toLocaleDateString("fr-FR", o);
+  const courte = (s) => fmt(versDate(s), { day:"numeric", month:"short", year:"numeric" });
+  const virgule = (n) => n.toFixed(1).replace(".", ",").replace(",0","");
+  const jours = (n) => n + " jour" + (Math.abs(n) > 1 ? "s" : "");
+
+  function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("vu"); clearTimeout(toast.h); toast.h=setTimeout(()=>el.classList.remove("vu"),2200); }
+
+  function calculs(){
+    const d = [...new Set(etat.dates)].sort();
+    const piles = [];
+    for (let i=1;i<d.length;i++) piles.push({ debut:d[i-1], fin:d[i], jours: ecart(d[i-1], d[i]) });
+    const recentes = piles.slice(-NB_MOYENNE).map(p => p.jours);
+    const moyenne = recentes.length ? recentes.reduce((a,b)=>a+b,0)/recentes.length : etat.dureeDefaut;
+    const pas = Math.max(1, Math.round(moyenne));
+    const derniere = d[d.length-1] || null;
+    let prevue = null, ecoules = null, restants = null, prevusIso = [];
+    if (derniere){
+      prevue = versDate(plusJours(derniere, pas));
+      ecoules = ecart(derniere, iso(new Date()));
+      restants = Math.round((prevue - auj())/JOUR);
+      for (let k=1;k<=3;k++) prevusIso.push(plusJours(derniere, pas*k));
+    }
+    return { d, piles, moyenne, pas, derniere, prevue, ecoules, restants, prevusIso, estime: !recentes.length };
+  }
+
+  /* onglets */
+  const onglets = ["pile","data","agenda"];
+  function ouvrir(nom){
+    onglets.forEach(n => { $("t-"+n).setAttribute("aria-selected", String(n===nom)); $("p-"+n).hidden = n !== nom; });
+    try { localStorage.setItem(CLE+"-onglet", nom); } catch(e){}
+  }
+  onglets.forEach(n => $("t-"+n).onclick = () => ouvrir(n));
+
+  function rendre(){ const c = calculs(); rendrePile(c); rendreDonnees(c); rendreAgenda(c); rendreRappel(c); }
+
+  function rendrePile(c){
+    const ph = $("phrase"), zone = $("barres");
+    zone.innerHTML = "";
+    if (!c.derniere){
+      ph.textContent = "Aucune pile\nnotée pour l'instant.";
+      $("iProchain").textContent = "–";
+      $("iMoy").textContent = "–";
+      zone.style.gridTemplateColumns = "repeat(9,minmax(0,1fr))";
+      for (let i=0;i<9;i++) zone.append(barre(40, "var(--ligne)", "", false));
+      return;
+    }
+    const r = c.restants;
+    ph.textContent = r > 1 ? `Tout va bien,\nencore ${jours(r)}.` : r === 1 ? "Bientôt,\nplus qu'un jour." : r === 0 ? "C'est le jour,\nà changer aujourd'hui." : `Pile à changer,\n${jours(-r)} de retard.`;
+    ph.style.color = r < 0 ? "var(--rouge)" : "var(--texte)";
+    $("iProchain").textContent = fmt(c.prevue, { weekday:"short", day:"numeric", month:"short" }) + (c.estime ? " (estim.)" : "");
+    $("iMoy").textContent = c.piles.length ? virgule(c.moyenne) + " jours" : "–";
+    const total = Math.min(21, Math.max(c.pas, c.ecoules + 1));
+    zone.style.gridTemplateColumns = `repeat(${total},minmax(0,1fr))`;
+    for (let i=0;i<total;i++){
+      const jourDate = versDate(plusJours(c.derniere, i));
+      const passe = i < c.ecoules, aujd = i === c.ecoules, retard = i >= c.pas;
+      const couleur = passe ? "var(--ligne)" : aujd ? (retard ? "var(--rouge)" : "var(--lavande)") : "var(--clair)";
+      const b = barre(passe ? 40 : 100, couleur, LETTRES[jourDate.getDay()], aujd);
+      if (!passe && !aujd) b.firstChild.style.opacity = .6;
+      zone.append(b);
+    }
+  }
+  function barre(h, couleur, lettre, aujd){
+    const j = document.createElement("div"); j.className = "jour";
+    const b = document.createElement("span"); b.className = "barre"; b.style.height = h + "%"; b.style.background = couleur;
+    const l = document.createElement("span"); l.className = "lettre" + (aujd ? " auj" : ""); l.textContent = lettre;
+    j.append(b, l); return j;
+  }
+
+  function rendreDonnees(c){
+    const js = c.piles.map(p => p.jours);
+    $("phraseData").textContent = js.length ? `${js.length} pile${js.length>1?"s":""},\n${virgule(c.moyenne)} jours en moyenne.` : "Pas encore\nde données.";
+    $("dMoy").textContent = js.length ? virgule(c.moyenne) + " jours" : "–";
+    $("dNb").textContent = js.length;
+    $("dMax").textContent = js.length ? jours(Math.max(...js)) : "–";
+    $("dMin").textContent = js.length ? jours(Math.min(...js)) : "–";
+
+    const zone = $("graphDurees");
+    if (!js.length){ zone.innerHTML = '<p class="note" style="margin:0">Le graphique apparaît après deux changements.</p>'; $("tendance").textContent = ""; }
+    else {
+      const liste = c.piles.slice(-14);
+      const W = 400, H = 170, bas = 22, haut = 18;
+      const max = Math.max(...liste.map(p=>p.jours), c.moyenne);
+      const y = (v) => H - bas - (v/max)*(H - bas - haut);
+      const pasX = W / liste.length, w = Math.min(pasX - 6, 34);
+      let svg = `<svg class="graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Durée de chaque pile en jours">`;
+      liste.forEach((p,i) => {
+        const x = i*pasX + (pasX - w)/2;
+        svg += `<rect x="${x}" y="${y(p.jours)}" width="${w}" height="${y(0)-y(p.jours)}" rx="7" fill="#B4C6FE"><title>${courte(p.debut)} → ${courte(p.fin)} : ${p.jours} j</title></rect>`;
+        svg += `<text x="${x+w/2}" y="${y(p.jours)-5}" text-anchor="middle" style="fill:#25273A">${p.jours}</text>`;
+        if (i===0 || i===liste.length-1) svg += `<text x="${x+w/2}" y="${H-5}" text-anchor="middle">${fmt(versDate(p.debut),{day:"numeric",month:"short"})}</text>`;
+      });
+      svg += `<line x1="0" x2="${W}" y1="${y(c.moyenne)}" y2="${y(c.moyenne)}" stroke="#94ABF2" stroke-width="1.5" stroke-dasharray="4 4"/></svg>`;
+      zone.innerHTML = svg;
+      if (js.length >= 6){
+        const r = js.slice(-3), a = js.slice(0,-3);
+        const diff = r.reduce((x,y)=>x+y,0)/3 - a.reduce((x,y)=>x+y,0)/a.length;
+        $("tendance").textContent = Math.abs(diff) < 0.5 ? "Tes dernières piles tiennent comme d'habitude." : `Tes 3 dernières piles ont tenu ${virgule(Math.abs(diff))} j de ${diff>0?"plus":"moins"}.`;
+      } else $("tendance").textContent = "Pointillés : ta moyenne.";
+    }
+
+    const ul = $("histo"); ul.innerHTML = "";
+    const inv = [...c.d].reverse();
+    inv.forEach((s, idx) => {
+      const li = document.createElement("li");
+      const t = document.createElement("span"); t.textContent = courte(s);
+      const du = document.createElement("span"); du.className = "duree";
+      du.textContent = idx === 0 ? "en cours" : jours(ecart(s, inv[idx-1]));
+      const x = document.createElement("button"); x.className = "suppr";
+      x.textContent = suppArme === s ? "Retirer ?" : "×";
+      if (suppArme === s) x.classList.add("confirme");
+      x.setAttribute("aria-label", `Retirer le ${courte(s)}`);
+      x.onclick = () => {
+        if (suppArme === s){ etat.dates = etat.dates.filter(v => v !== s); suppArme = null; sauver(); toast("Date retirée"); }
+        else { suppArme = s; rendre(); setTimeout(()=>{ if (suppArme===s){ suppArme=null; rendre(); } }, 4000); }
+      };
+      li.append(t, du, x); ul.append(li);
+    });
+    $("histoVide").hidden = c.d.length > 0;
+    $("blocDefaut").hidden = c.piles.length > 0;
+    $("dureeDefaut").value = String(etat.dureeDefaut);
+  }
+
+  function rendreAgenda(c){
+    const a = moisVu.getFullYear(), m = moisVu.getMonth();
+    $("moisTitre").textContent = fmt(moisVu, { month:"long", year:"numeric" });
+    const g = $("grille"); g.innerHTML = "";
+    ["L","M","M","J","V","S","D"].forEach(j => { const e=document.createElement("div"); e.className="jsem"; e.textContent=j; e.setAttribute("aria-hidden","true"); g.append(e); });
+    const decal = (new Date(a,m,1).getDay()+6)%7;
+    for (let i=0;i<decal;i++) g.append(document.createElement("div"));
+    const nb = new Date(a,m+1,0).getDate(), aujIso = iso(new Date()), premiere = c.d[0];
+    for (let j=1;j<=nb;j++){
+      const s = a+"-"+pad(m+1)+"-"+pad(j);
+      const b = document.createElement("button"); b.className = "case"; b.textContent = j;
+      const change = c.d.includes(s), rang = c.prevusIso.indexOf(s);
+      if (change) b.classList.add("change");
+      else if (premiere && s > premiere && s <= aujIso) b.classList.add("porte");
+      if (rang >= 0) b.classList.add("prevu", "p"+(rang+1));
+      if (s > aujIso && rang < 0) b.classList.add("futur");
+      if (s === aujIso) b.classList.add("auj");
+      b.setAttribute("aria-pressed", String(jourChoisi===s));
+      b.setAttribute("aria-label", fmt(versDate(s),{weekday:"long",day:"numeric",month:"long"}) + (change?", pile changée":"") + (rang>=0?", changement prévu":""));
+      b.onclick = () => { jourChoisi = jourChoisi===s ? null : s; rendreAgenda(calculs()); };
+      const cell = document.createElement("div"); cell.append(b); g.append(cell);
+    }
+    const det = $("detailJour");
+    if (!jourChoisi) det.textContent = "";
+    else {
+      const lib = fmt(versDate(jourChoisi),{weekday:"long",day:"numeric",month:"long"});
+      const idx = c.d.indexOf(jourChoisi);
+      if (idx >= 0){ const suiv = c.d[idx+1]; det.textContent = `${lib} · pile changée` + (suiv ? ` · a tenu ${jours(ecart(jourChoisi, suiv))}` : " · en cours"); }
+      else if (c.prevusIso.includes(jourChoisi)) det.textContent = `${lib} · changement prévu`;
+      else { const avant = c.d.filter(s => s < jourChoisi).pop(); det.textContent = avant && jourChoisi <= aujIso ? `${lib} · jour ${ecart(avant, jourChoisi)+1} de la pile` : lib; }
+    }
+    const zone = $("prochains"); zone.innerHTML = "";
+    if (!c.prevusIso.length){ zone.innerHTML = '<p class="note" style="margin:0">Note une pile pour voir les prochains changements.</p>'; }
+    c.prevusIso.forEach(s => {
+      const n = ecart(aujIso, s);
+      const li = document.createElement("div"); li.className = "info";
+      const a1 = document.createElement("span"); a1.textContent = n === 0 ? "aujourd'hui" : n < 0 ? `il y a ${jours(-n)}` : `dans ${jours(n)}`;
+      const a2 = document.createElement("span"); a2.textContent = fmt(versDate(s),{weekday:"long",day:"numeric",month:"long"});
+      li.append(a1, a2); zone.append(li);
+    });
+  }
+
+  function rendreRappel(c){
+    const g = $("lienGoogle"), o = $("lienOutlook");
+    if (!c.prevue){
+      $("rappelTexte").textContent = "À";
+      [g,o].forEach(a => { a.removeAttribute("href"); a.style.opacity = .4; a.style.pointerEvents = "none"; });
+      return;
+    }
+    const [h, mi] = ($("heure").value || "09:00").split(":").map(Number);
+    const jour = new Date(c.prevue.getTime() + qRappel*JOUR + 12*3600000);
+    const debut = new Date(jour.getFullYear(), jour.getMonth(), jour.getDate(), h, mi);
+    const fin = new Date(debut.getTime() + 15*60000);
+    const titre = qRappel < 0 ? "Pile à changer demain" : "Changer ma pile";
+    const details = `Changement prévu ${fmt(c.prevue,{weekday:"long",day:"numeric",month:"long"})}.`;
+    $("rappelTexte").textContent = fmt(debut, { weekday:"long", day:"numeric", month:"long" }) + " à";
+    const f = (d) => d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"T"+pad(d.getHours())+pad(d.getMinutes())+"00";
+    g.href = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(titre) + "&dates=" + f(debut) + "/" + f(fin) + "&ctz=Europe/Paris&details=" + encodeURIComponent(details);
+    o.href = "https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=" + encodeURIComponent(titre) + "&startdt=" + encodeURIComponent(debut.toISOString()) + "&enddt=" + encodeURIComponent(fin.toISOString()) + "&body=" + encodeURIComponent(details);
+    [g,o].forEach(a => { a.style.opacity = 1; a.style.pointerEvents = "auto"; });
+  }
+
+  /* enregistrement : en ligne dans Claude, sinon sur l'appareil */
+  async function sauver(){
+    rendre();
+    const donnees = { dates: [...new Set(etat.dates)].sort(), dureeDefaut: etat.dureeDefaut };
+    try { localStorage.setItem(CLE, JSON.stringify(donnees)); } catch(e){}
+    if (db){ try { await db.doc("suivi/piles").set(donnees); } catch(e){ toast("Pas pu enregistrer, réessaie"); } }
+  }
+  function ajouter(s){
+    if (!s) return;
+    if (s > iso(new Date())){ toast("Cette date est dans le futur"); return; }
+    if (etat.dates.includes(s)){ toast("Date déjà enregistrée"); return; }
+    etat.dates = [...etat.dates, s]; sauver(); toast("Changement enregistré");
+  }
+
+  /* interface */
+  const sel = $("dureeDefaut");
+  for (let n=3;n<=21;n++){ const o=document.createElement("option"); o.value=n; o.textContent=`${n} jours`; sel.append(o); }
+  sel.onchange = () => { etat.dureeDefaut = Number(sel.value); sauver(); };
+  $("autreDate").value = iso(new Date()); $("autreDate").max = iso(new Date());
+  $("btnAujourdhui").onclick = () => ajouter(iso(new Date()));
+  $("btnAutreJour").onclick = () => { const z = $("zoneAutre"); z.hidden = !z.hidden; $("btnAutreJour").setAttribute("aria-expanded", String(!z.hidden)); };
+  $("btnAutre").onclick = () => { ajouter($("autreDate").value); $("zoneAutre").hidden = true; $("btnAutreJour").setAttribute("aria-expanded","false"); };
+  $("heure").oninput = () => rendreRappel(calculs());
+  $("qVeille").onclick = () => { qRappel=-1; $("qVeille").setAttribute("aria-pressed","true"); $("qJour").setAttribute("aria-pressed","false"); rendreRappel(calculs()); };
+  $("qJour").onclick = () => { qRappel=0; $("qJour").setAttribute("aria-pressed","true"); $("qVeille").setAttribute("aria-pressed","false"); rendreRappel(calculs()); };
+  $("moisPrec").onclick = () => { moisVu = new Date(moisVu.getFullYear(), moisVu.getMonth()-1, 1); rendreAgenda(calculs()); };
+  $("moisSuiv").onclick = () => { moisVu = new Date(moisVu.getFullYear(), moisVu.getMonth()+1, 1); rendreAgenda(calculs()); };
+
+  try { const o = localStorage.getItem(CLE+"-onglet"); if (onglets.includes(o)) ouvrir(o); } catch(e){}
+  try { const l = JSON.parse(localStorage.getItem(CLE) || "null"); if (l && Array.isArray(l.dates)) etat = { dates:[...l.dates], dureeDefaut:l.dureeDefaut||7 }; } catch(e){}
+  rendre();
+
+  (async () => {
+    if (!(window.claude && window.claude.use)) return;
+    try { db = await window.claude.use("db"); } catch(e){ db = null; }
+    if (!db) return;
+    try {
+      const snap = await db.doc("suivi/piles").get();
+      if (snap.exists){
+        const v = snap.data();
+        etat = { dates: Array.isArray(v.dates) ? v.dates.filter(x => typeof x === "string") : [], dureeDefaut: Number(v.dureeDefaut) || 7 };
+      } else if (etat.dates.length){
+        await db.doc("suivi/piles").set({ dates: [...etat.dates], dureeDefaut: etat.dureeDefaut });
+      }
+      rendre();
+    } catch(e){}
+  })();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body>
+</html>
