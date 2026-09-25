@@ -171,8 +171,7 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
       <input type="time" id="heure" value="09:00">
     </div>
     <div class="liens">
-      <a class="lien" id="lienGoogle" href="#" target="_blank" rel="noopener">Google Agenda</a>
-      <a class="lien" id="lienOutlook" href="#" target="_blank" rel="noopener">Outlook</a>
+      <a class="lien" id="lienCal" href="#" target="_blank" rel="noopener">Ajouter à mon Calendrier</a>
     </div>
   </section>
 </main>
@@ -359,10 +358,10 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
   }
 
   function rendreRappel(c){
-    const g = $("lienGoogle"), o = $("lienOutlook");
+    const l = $("lienCal");
     if (!c.prevue){
       $("rappelTexte").textContent = "À";
-      [g,o].forEach(a => { a.removeAttribute("href"); a.style.opacity = .4; a.style.pointerEvents = "none"; });
+      l.removeAttribute("href"); l.style.opacity = .4; l.style.pointerEvents = "none";
       return;
     }
     const [h, mi] = ($("heure").value || "09:00").split(":").map(Number);
@@ -372,10 +371,15 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
     const titre = qRappel < 0 ? "Pile à changer demain" : "Changer ma pile";
     const details = `Changement prévu ${fmt(c.prevue,{weekday:"long",day:"numeric",month:"long"})}.`;
     $("rappelTexte").textContent = fmt(debut, { weekday:"long", day:"numeric", month:"long" }) + " à";
-    const f = (d) => d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"T"+pad(d.getHours())+pad(d.getMinutes())+"00";
-    g.href = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(titre) + "&dates=" + f(debut) + "/" + f(fin) + "&ctz=Europe/Paris&details=" + encodeURIComponent(details);
-    o.href = "https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=" + encodeURIComponent(titre) + "&startdt=" + encodeURIComponent(debut.toISOString()) + "&enddt=" + encodeURIComponent(fin.toISOString()) + "&body=" + encodeURIComponent(details);
-    [g,o].forEach(a => { a.style.opacity = 1; a.style.pointerEvents = "auto"; });
+    const utc = (d) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    if (window.claude){
+      // aperçu dans Claude : pas de serveur, on passe par Google Agenda
+      l.href = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(titre) + "&dates=" + utc(debut) + "/" + utc(fin) + "&details=" + encodeURIComponent(details);
+    } else {
+      // appli installée : fichier .ics lu par le Calendrier de l'iPhone
+      l.href = "api/rappel?debut=" + utc(debut) + "&titre=" + encodeURIComponent(titre) + "&details=" + encodeURIComponent(details);
+    }
+    l.style.opacity = 1; l.style.pointerEvents = "auto";
   }
 
   /* enregistrement : en ligne dans Claude, sinon sur l'appareil */
