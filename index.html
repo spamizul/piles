@@ -377,7 +377,11 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
       l.href = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(titre) + "&dates=" + utc(debut) + "/" + utc(fin) + "&details=" + encodeURIComponent(details);
     } else {
       // appli installée : fichier .ics lu par le Calendrier de l'iPhone
-      l.href = "api/rappel?debut=" + utc(debut) + "&titre=" + encodeURIComponent(titre) + "&details=" + encodeURIComponent(details);
+      const url = new URL("api/rappel?debut=" + utc(debut) + "&titre=" + encodeURIComponent(titre) + "&details=" + encodeURIComponent(details), location.href).href;
+      // depuis l'icône de l'écran d'accueil, l'iPhone n'ouvre pas les rendez-vous : on passe par Safari
+      const installee = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+      if (installee){ l.href = "x-safari-" + url; l.removeAttribute("target"); }
+      else { l.href = url; l.setAttribute("target", "_blank"); }
     }
     l.style.opacity = 1; l.style.pointerEvents = "auto";
   }
