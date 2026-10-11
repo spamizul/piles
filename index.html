@@ -66,10 +66,18 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
 .graph text{fill:var(--doux);font-size:11px;font-family:"Figtree",system-ui,sans-serif}
 .note{font-size:14px;color:var(--doux);margin:10px 0 0}
 .histo{list-style:none;margin:0;padding:0}
-.histo li{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--ligne);font-variant-numeric:tabular-nums;font-size:15px}
+.histo li{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--ligne);font-variant-numeric:tabular-nums;font-size:15px}
 .duree{color:var(--doux);font-size:14px}
-button.duree{padding:4px 0}
-.duree.exclue{color:var(--lavande)}
+.duree.exclue{text-decoration:line-through}
+.compte{font-size:12px;border-radius:999px;padding:5px 10px;border:1px solid var(--ligne);color:var(--doux);white-space:nowrap}
+.compte.non{background:#FBE9E4;border-color:#FBE9E4;color:var(--rouge)}
+
+/* question après un changement */
+.question{margin-top:16px;padding:16px;border-radius:18px;background:var(--pale);font-size:15px}
+.question p{margin:0 0 12px}
+.question .boutons{display:flex;flex-direction:column;gap:8px}
+.question button{border-radius:999px;padding:12px 0;font-size:15px;background:#fff}
+.question .exclure{color:var(--rouge)}
 .suppr{color:var(--doux);font-size:16px;padding:4px 8px}
 .suppr.confirme{color:var(--rouge);font-size:14px}
 
@@ -126,6 +134,13 @@ button.duree{padding:4px 0}
         <input type="date" id="autreDate" aria-label="Date du changement">
         <button class="petit-btn" id="btnAutre">Ajouter</button>
       </div>
+      <div class="question" id="question" role="group" aria-labelledby="qTexte" hidden>
+        <p id="qTexte"></p>
+        <div class="boutons">
+          <button id="qCompter">Oui, normal : la compter</button>
+          <button class="exclure" id="qExclure">Non, elle a lâché trop tôt : ne pas la compter</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -144,7 +159,7 @@ button.duree{padding:4px 0}
     <h2>Historique</h2>
     <ul class="histo" id="histo"></ul>
     <p class="note" id="histoVide">Rien pour l'instant.</p>
-    <p class="note" id="histoAide">Touche une durée pour la retirer de la moyenne (ou la remettre).</p>
+    <p class="note" id="histoAide">Une pile qui a lâché trop tôt peut être retirée de la moyenne : touche « comptée » sur sa ligne.</p>
     <div id="blocDefaut" class="info" style="margin-top:14px">
       <label for="dureeDefaut" style="color:var(--doux)">Durée estimée d'une pile</label>
       <select id="dureeDefaut"></select>
@@ -270,9 +285,9 @@ button.duree{padding:4px 0}
     // les piles exclues ne comptent ni dans la moyenne, ni dans la plus longue / plus courte, ni dans la tendance
     const js = c.piles.filter(p => !p.exclue).map(p => p.jours);
     const nbExclues = c.piles.length - js.length;
-    $("phraseData").textContent = js.length ? `${c.piles.length} pile${c.piles.length>1?"s":""},\n${virgule(c.moyenne)} jours en moyenne.` : c.piles.length ? `${c.piles.length} pile${c.piles.length>1?"s":""},\ntoutes hors moyenne.` : "Pas encore\nde données.";
+    $("phraseData").textContent = js.length ? `${c.piles.length} pile${c.piles.length>1?"s":""},\n${virgule(c.moyenne)} jours en moyenne.` : c.piles.length ? `${c.piles.length} pile${c.piles.length>1?"s":""},\naucune comptée.` : "Pas encore\nde données.";
     $("dMoy").textContent = js.length ? virgule(c.moyenne) + " jours" : "–";
-    $("dNb").textContent = c.piles.length + (nbExclues ? ` (${nbExclues} hors moyenne)` : "");
+    $("dNb").textContent = c.piles.length + (nbExclues ? ` (${nbExclues} pas comptée${nbExclues>1?"s":""})` : "");
     $("dMax").textContent = js.length ? jours(Math.max(...js)) : "–";
     $("dMin").textContent = js.length ? jours(Math.min(...js)) : "–";
 
@@ -287,7 +302,7 @@ button.duree{padding:4px 0}
       let svg = `<svg class="graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Durée de chaque pile en jours">`;
       liste.forEach((p,i) => {
         const x = i*pasX + (pasX - w)/2;
-        svg += `<rect x="${x}" y="${y(p.jours)}" width="${w}" height="${y(0)-y(p.jours)}" rx="7" fill="${p.exclue ? "#EDEEF5" : "#B4C6FE"}"><title>${courte(p.debut)} → ${courte(p.fin)} : ${p.jours} j${p.exclue ? " (hors moyenne)" : ""}</title></rect>`;
+        svg += `<rect x="${x}" y="${y(p.jours)}" width="${w}" height="${y(0)-y(p.jours)}" rx="7" fill="${p.exclue ? "#EDEEF5" : "#B4C6FE"}"><title>${courte(p.debut)} → ${courte(p.fin)} : ${p.jours} j${p.exclue ? " (pas comptée)" : ""}</title></rect>`;
         svg += `<text x="${x+w/2}" y="${y(p.jours)-5}" text-anchor="middle" style="fill:${p.exclue ? "#A3A6BA" : "#25273A"}">${p.jours}</text>`;
         if (i===0 || i===liste.length-1) svg += `<text x="${x+w/2}" y="${H-5}" text-anchor="middle">${fmt(versDate(p.debut),{day:"numeric",month:"short"})}</text>`;
       });
@@ -298,8 +313,8 @@ button.duree{padding:4px 0}
         const r = js.slice(-3), a = js.slice(0,-3);
         const diff = r.reduce((x,y)=>x+y,0)/3 - a.reduce((x,y)=>x+y,0)/a.length;
         $("tendance").textContent = Math.abs(diff) < 0.5 ? "Tes dernières piles tiennent comme d'habitude." : `Tes 3 dernières piles ont tenu ${virgule(Math.abs(diff))} j de ${diff>0?"plus":"moins"}.`;
-      } else $("tendance").textContent = "Pointillés : ta moyenne." + (nbExclues ? " Barres grises : hors moyenne." : "");
-      if (js.length >= 6 && nbExclues) $("tendance").textContent += " Barres grises : hors moyenne.";
+      } else $("tendance").textContent = "Pointillés : ta moyenne." + (nbExclues ? " Barres grises : pas comptées." : "");
+      if (js.length >= 6 && nbExclues) $("tendance").textContent += " Barres grises : pas comptées.";
     }
 
     const ul = $("histo"); ul.innerHTML = "";
@@ -307,29 +322,29 @@ button.duree{padding:4px 0}
     inv.forEach((s, idx) => {
       const li = document.createElement("li");
       const t = document.createElement("span"); t.textContent = courte(s);
-      let du;
+      const du = document.createElement("span"); du.className = "duree";
+      let co = document.createElement("span");
       if (idx === 0){
-        du = document.createElement("span"); du.className = "duree"; du.textContent = "en cours";
+        du.textContent = "en cours";
       } else {
         const exclue = etat.exclues.includes(s);
-        du = document.createElement("button"); du.className = "duree" + (exclue ? " exclue" : "");
-        du.textContent = jours(ecart(s, inv[idx-1])) + (exclue ? " · hors moyenne" : "");
-        du.setAttribute("aria-pressed", String(exclue));
-        du.setAttribute("aria-label", `Pile du ${courte(s)} : ` + (exclue ? "remettre dans la moyenne" : "retirer de la moyenne"));
-        du.onclick = () => {
-          etat.exclues = exclue ? etat.exclues.filter(v => v !== s) : [...etat.exclues, s];
-          sauver(); toast(exclue ? "Remise dans la moyenne" : "Retirée de la moyenne");
-        };
+        du.textContent = jours(ecart(s, inv[idx-1]));
+        if (exclue) du.classList.add("exclue");
+        co = document.createElement("button"); co.className = "compte" + (exclue ? " non" : "");
+        co.textContent = exclue ? "pas comptée" : "comptée";
+        co.setAttribute("aria-pressed", String(!exclue));
+        co.setAttribute("aria-label", `Pile du ${courte(s)}, ` + (exclue ? "pas comptée dans la moyenne. Toucher pour la compter." : "comptée dans la moyenne. Toucher pour ne pas la compter."));
+        co.onclick = () => basculer(s, !exclue);
       }
       const x = document.createElement("button"); x.className = "suppr";
       x.textContent = suppArme === s ? "Retirer ?" : "×";
       if (suppArme === s) x.classList.add("confirme");
       x.setAttribute("aria-label", `Retirer le ${courte(s)}`);
       x.onclick = () => {
-        if (suppArme === s){ etat.dates = etat.dates.filter(v => v !== s); etat.exclues = etat.exclues.filter(v => v !== s); suppArme = null; sauver(); toast("Date retirée"); }
+        if (suppArme === s){ etat.dates = etat.dates.filter(v => v !== s); etat.exclues = etat.exclues.filter(v => v !== s); suppArme = null; fermerQuestion(); sauver(); toast("Date retirée"); }
         else { suppArme = s; rendre(); setTimeout(()=>{ if (suppArme===s){ suppArme=null; rendre(); } }, 4000); }
       };
-      li.append(t, du, x); ul.append(li);
+      li.append(t, du, co, x); ul.append(li);
     });
     $("histoVide").hidden = c.d.length > 0;
     $("histoAide").hidden = c.piles.length === 0;
@@ -364,7 +379,7 @@ button.duree{padding:4px 0}
     else {
       const lib = fmt(versDate(jourChoisi),{weekday:"long",day:"numeric",month:"long"});
       const idx = c.d.indexOf(jourChoisi);
-      if (idx >= 0){ const suiv = c.d[idx+1]; det.textContent = `${lib} · pile changée` + (suiv ? ` · a tenu ${jours(ecart(jourChoisi, suiv))}` + (etat.exclues.includes(jourChoisi) ? " (hors moyenne)" : "") : " · en cours"); }
+      if (idx >= 0){ const suiv = c.d[idx+1]; det.textContent = `${lib} · pile changée` + (suiv ? ` · a tenu ${jours(ecart(jourChoisi, suiv))}` + (etat.exclues.includes(jourChoisi) ? " (pas comptée)" : "") : " · en cours"); }
       else if (c.prevusIso.includes(jourChoisi)) det.textContent = `${lib} · changement prévu`;
       else { const avant = c.d.filter(s => s < jourChoisi).pop(); det.textContent = avant && jourChoisi <= aujIso ? `${lib} · jour ${ecart(avant, jourChoisi)+1} de la pile` : lib; }
     }
@@ -419,8 +434,28 @@ button.duree{padding:4px 0}
     if (!s) return;
     if (s > iso(new Date())){ toast("Cette date est dans le futur"); return; }
     if (etat.dates.includes(s)){ toast("Date déjà enregistrée"); return; }
+    const avant = calculs();
     etat.dates = [...etat.dates, s]; sauver(); toast("Changement enregistré");
+    poserQuestion(s, avant);
   }
+  function basculer(debut, exclure){
+    etat.exclues = exclure ? [...new Set([...etat.exclues, debut])] : etat.exclues.filter(v => v !== debut);
+    sauver(); toast(exclure ? "Pile pas comptée dans la moyenne" : "Pile comptée dans la moyenne");
+  }
+
+  /* après un changement : la pile qui vient de se terminer a-t-elle tenu normalement ? */
+  let questionPour = null;
+  function poserQuestion(fin, avant){
+    const d = [...new Set(etat.dates)].sort();
+    const debut = d[d.indexOf(fin) - 1];
+    if (!debut){ fermerQuestion(); return; }
+    questionPour = debut;
+    const duree = ecart(debut, fin);
+    const habitude = avant.estime ? "" : ` (d'habitude ${virgule(avant.moyenne)} jours)`;
+    $("qTexte").textContent = `La pile d'avant a tenu ${jours(duree)}${habitude}. C'est une durée normale ?`;
+    $("question").hidden = false;
+  }
+  function fermerQuestion(){ questionPour = null; $("question").hidden = true; }
 
   /* interface */
   const sel = $("dureeDefaut");
@@ -430,6 +465,12 @@ button.duree{padding:4px 0}
   $("btnAujourdhui").onclick = () => ajouter(iso(new Date()));
   $("btnAutreJour").onclick = () => { const z = $("zoneAutre"); z.hidden = !z.hidden; $("btnAutreJour").setAttribute("aria-expanded", String(!z.hidden)); };
   $("btnAutre").onclick = () => { ajouter($("autreDate").value); $("zoneAutre").hidden = true; $("btnAutreJour").setAttribute("aria-expanded","false"); };
+  $("qCompter").onclick = () => {
+    if (questionPour && etat.exclues.includes(questionPour)) basculer(questionPour, false);
+    else toast("Pile comptée dans la moyenne");
+    fermerQuestion();
+  };
+  $("qExclure").onclick = () => { if (questionPour) basculer(questionPour, true); fermerQuestion(); };
   $("heure").oninput = () => rendreRappel(calculs());
   $("qVeille").onclick = () => { qRappel=-1; $("qVeille").setAttribute("aria-pressed","true"); $("qJour").setAttribute("aria-pressed","false"); rendreRappel(calculs()); };
   $("qJour").onclick = () => { qRappel=0; $("qJour").setAttribute("aria-pressed","true"); $("qVeille").setAttribute("aria-pressed","false"); rendreRappel(calculs()); };
