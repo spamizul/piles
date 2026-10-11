@@ -40,12 +40,22 @@ nav button[aria-selected="true"]{color:var(--texte)}
 .page{flex:1;display:flex;flex-direction:column}
 .phrase{margin:64px 0 0;font-size:30px;line-height:1.25;white-space:pre-line;text-wrap:balance}
 
-/* barres */
-.barres{margin-top:48px;display:grid;gap:6px;align-items:end;height:150px}
-.jour{height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px;min-width:0}
-.barre{width:100%;border-radius:8px}
-.lettre{font-size:12px;color:var(--doux)}
-.lettre.auj{color:var(--texte)}
+/* accueil : anneau des jours */
+.accueil{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:24px}
+.anneau{position:relative;width:min(68vw,250px);aspect-ratio:1}
+.anneau svg{width:100%;height:100%;display:block;overflow:visible}
+.centre{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.centre small{font-size:13px;color:var(--doux);letter-spacing:.04em}
+.centre b{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:64px;line-height:1.05;font-variant-numeric:tabular-nums}
+.accueil .phrase{margin:36px 0 0;font-size:23px}
+.quand{margin:12px 0 0;font-size:14px;color:var(--doux);font-variant-numeric:tabular-nums}
+
+/* glissement entre les pages */
+@keyframes depuisDroite{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes depuisGauche{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+.page.droite{animation:depuisDroite .28s ease-out}
+.page.gauche{animation:depuisGauche .28s ease-out}
+@media (prefers-reduced-motion:reduce){.page.droite,.page.gauche{animation:none}}
 
 .lignes{margin-top:26px}
 .info{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid var(--ligne);font-size:15px;font-variant-numeric:tabular-nums}
@@ -121,11 +131,13 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
 
   <!-- PILE -->
   <section class="page" id="p-pile" role="tabpanel" aria-labelledby="t-pile">
-    <p class="phrase titre" id="phrase" aria-live="polite"></p>
-    <div class="barres" id="barres" role="img" aria-label="Jours de la pile en cours"></div>
-    <div class="lignes">
-      <div class="info"><span>Prochain changement</span><span id="iProchain">–</span></div>
-      <div class="info"><span>Moyenne</span><span id="iMoy">–</span></div>
+    <div class="accueil">
+      <div class="anneau">
+        <svg id="anneau" viewBox="0 0 200 200" role="img" aria-label="Jours de la pile en cours"></svg>
+        <div class="centre" aria-hidden="true"><small id="cHaut">jour</small><b id="cNombre">–</b></div>
+      </div>
+      <p class="phrase titre" id="phrase" aria-live="polite"></p>
+      <p class="quand" id="quand"></p>
     </div>
     <div class="bas">
       <button class="principal" id="btnAujourdhui">Pile changée</button>
@@ -137,8 +149,8 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
       <div class="question" id="question" role="group" aria-labelledby="qTexte" hidden>
         <p id="qTexte"></p>
         <div class="boutons">
-          <button id="qCompter">Oui, normal : la compter</button>
-          <button class="exclure" id="qExclure">Non, elle a lâché trop tôt : ne pas la compter</button>
+          <button id="qCompter">Oui, la compter</button>
+          <button class="exclure" id="qExclure">Non, trop tôt : ne pas la compter</button>
         </div>
       </div>
     </div>
@@ -198,7 +210,6 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
 <script>
 (function(){
   const JOUR = 86400000, NB_MOYENNE = 6, CLE = "suivi-piles";
-  const LETTRES = ["D","L","M","M","J","V","S"];
   let etat = { dates: [], dureeDefaut: 7, exclues: [] };
   let db = null, qRappel = -1, suppArme = null, jourChoisi = null;
   let moisVu = new Date(); moisVu.setDate(1);
@@ -239,46 +250,82 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
 
   /* onglets */
   const onglets = ["pile","data","agenda"];
-  function ouvrir(nom){
-    onglets.forEach(n => { $("t-"+n).setAttribute("aria-selected", String(n===nom)); $("p-"+n).hidden = n !== nom; });
+  let ouvert = "pile";
+  function ouvrir(nom, anime){
+    const sens = onglets.indexOf(nom) > onglets.indexOf(ouvert) ? "droite" : "gauche";
+    onglets.forEach(n => {
+      const p = $("p-"+n);
+      $("t-"+n).setAttribute("aria-selected", String(n===nom));
+      p.hidden = n !== nom;
+      p.classList.remove("droite", "gauche");
+    });
+    if (anime && nom !== ouvert){ const p = $("p-"+nom); void p.offsetWidth; p.classList.add(sens); }
+    ouvert = nom;
     try { localStorage.setItem(CLE+"-onglet", nom); } catch(e){}
   }
-  onglets.forEach(n => $("t-"+n).onclick = () => ouvrir(n));
+  onglets.forEach(n => $("t-"+n).onclick = () => ouvrir(n, true));
+
+  /* glisser le doigt à gauche / à droite pour changer de page */
+  let toucheX = null, toucheY = null;
+  document.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1 || (e.target.closest && e.target.closest("input, select"))) { toucheX = null; return; }
+    toucheX = e.touches[0].clientX; toucheY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (toucheX === null) return;
+    const dx = e.changedTouches[0].clientX - toucheX, dy = e.changedTouches[0].clientY - toucheY;
+    toucheX = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const i = onglets.indexOf(ouvert) + (dx < 0 ? 1 : -1);
+    if (i >= 0 && i < onglets.length) ouvrir(onglets[i], true);
+  }, { passive: true });
 
   function rendre(){ const c = calculs(); rendrePile(c); rendreDonnees(c); rendreAgenda(c); rendreRappel(c); }
 
   function rendrePile(c){
-    const ph = $("phrase"), zone = $("barres");
-    zone.innerHTML = "";
+    const ph = $("phrase"), svg = $("anneau");
     if (!c.derniere){
       ph.textContent = "Aucune pile\nnotée pour l'instant.";
-      $("iProchain").textContent = "–";
-      $("iMoy").textContent = "–";
-      zone.style.gridTemplateColumns = "repeat(9,minmax(0,1fr))";
-      for (let i=0;i<9;i++) zone.append(barre(40, "var(--ligne)", "", false));
+      ph.style.color = "var(--texte)";
+      $("cHaut").textContent = "jour"; $("cNombre").textContent = "–";
+      $("quand").textContent = "Appuie sur « Pile changée » pour commencer.";
+      svg.innerHTML = segments(7, () => "#EDEEF5");
       return;
     }
     const r = c.restants;
-    ph.textContent = r > 1 ? `Tout va bien,\nencore ${jours(r)}.` : r === 1 ? "Bientôt,\nplus qu'un jour." : r === 0 ? "C'est le jour,\nà changer aujourd'hui." : `Pile à changer,\n${jours(-r)} de retard.`;
-    ph.style.color = r < 0 ? "var(--rouge)" : "var(--texte)";
-    $("iProchain").textContent = fmt(c.prevue, { weekday:"short", day:"numeric", month:"short" }) + (c.estime ? " (estim.)" : "");
-    $("iMoy").textContent = c.estime ? "–" : virgule(c.moyenne) + " jours";
+    // la date vient d'une moyenne : on reste approximatif
+    ph.textContent =
+        r >= 6 ? "Tranquille,\nencore une petite semaine."
+      : r >= 4 ? "Tout va bien,\nencore quelques jours."
+      : r >= 2 ? "Ça approche,\nd'ici 2 ou 3 jours environ."
+      : r === 1 ? "Bientôt,\nsans doute demain."
+      : r === 0 ? "C'est à peu près le moment,\naujourd'hui ou demain."
+      : r >= -2 ? "Elle tient encore ?\nElle dépasse un peu la moyenne."
+      : "Pile à changer ?\nElle tient bien plus que d'habitude.";
+    const tard = r <= -3;
+    ph.style.color = tard ? "var(--rouge)" : "var(--texte)";
+
+    // centre : le jour de la pile (ça, c'est exact)
+    $("cHaut").textContent = "jour";
+    $("cNombre").textContent = c.ecoules + 1;
+    $("quand").textContent = "changement vers le " + fmt(c.prevue, { weekday:"short", day:"numeric", month:"short" }) + (c.estime ? " (estimation)" : "");
+
+    // un segment par jour : jours passés en lavande, aujourd'hui en foncé, jours à venir en pâle
     const total = Math.min(21, Math.max(c.pas, c.ecoules + 1));
-    zone.style.gridTemplateColumns = `repeat(${total},minmax(0,1fr))`;
-    for (let i=0;i<total;i++){
-      const jourDate = versDate(plusJours(c.derniere, i));
-      const passe = i < c.ecoules, aujd = i === c.ecoules, retard = i >= c.pas;
-      const couleur = passe ? "var(--ligne)" : aujd ? (retard ? "var(--rouge)" : "var(--lavande)") : "var(--clair)";
-      const b = barre(passe ? 40 : 100, couleur, LETTRES[jourDate.getDay()], aujd);
-      if (!passe && !aujd) b.firstChild.style.opacity = .6;
-      zone.append(b);
-    }
+    svg.innerHTML = segments(total, i => i < c.ecoules ? (tard ? "#F2C3B6" : "#B4C6FE") : i === c.ecoules ? (tard ? "#D9674E" : "#25273A") : "#EDEEF5");
+    svg.setAttribute("aria-label", `Jour ${c.ecoules + 1} de la pile, changement prévu vers le ${fmt(c.prevue, { weekday:"long", day:"numeric", month:"long" })}`);
   }
-  function barre(h, couleur, lettre, aujd){
-    const j = document.createElement("div"); j.className = "jour";
-    const b = document.createElement("span"); b.className = "barre"; b.style.height = h + "%"; b.style.background = couleur;
-    const l = document.createElement("span"); l.className = "lettre" + (aujd ? " auj" : ""); l.textContent = lettre;
-    j.append(b, l); return j;
+  function segments(n, couleur){
+    const R = 86, E = 14, cx = 100, cy = 100;
+    if (n === 1) return `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${couleur(0)}" stroke-width="${E}"/>`;
+    const pas = 360 / n, vide = Math.min(15, pas * 0.6);
+    const pt = (a) => { const t = (a - 90) * Math.PI / 180; return (cx + R*Math.cos(t)).toFixed(2) + " " + (cy + R*Math.sin(t)).toFixed(2); };
+    let s = "";
+    for (let i=0;i<n;i++){
+      const a0 = i*pas + vide/2, a1 = (i+1)*pas - vide/2;
+      s += `<path d="M ${pt(a0)} A ${R} ${R} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${pt(a1)}" fill="none" stroke="${couleur(i)}" stroke-width="${E}" stroke-linecap="round"/>`;
+    }
+    return s;
   }
 
   function rendreDonnees(c){
@@ -451,7 +498,7 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
     if (!debut){ fermerQuestion(); return; }
     questionPour = debut;
     const duree = ecart(debut, fin);
-    const habitude = avant.estime ? "" : ` (d'habitude ${virgule(avant.moyenne)} jours)`;
+    const habitude = avant.estime ? "" : ` (d'habitude environ ${jours(Math.round(avant.moyenne))})`;
     $("qTexte").textContent = `La pile d'avant a tenu ${jours(duree)}${habitude}. C'est une durée normale ?`;
     $("question").hidden = false;
   }
