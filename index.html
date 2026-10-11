@@ -68,6 +68,8 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
 .histo{list-style:none;margin:0;padding:0}
 .histo li{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--ligne);font-variant-numeric:tabular-nums;font-size:15px}
 .duree{color:var(--doux);font-size:14px}
+button.duree{padding:4px 0}
+.duree.exclue{color:var(--lavande)}
 .suppr{color:var(--doux);font-size:16px;padding:4px 8px}
 .suppr.confirme{color:var(--rouge);font-size:14px}
 
@@ -142,6 +144,7 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
     <h2>Historique</h2>
     <ul class="histo" id="histo"></ul>
     <p class="note" id="histoVide">Rien pour l'instant.</p>
+    <p class="note" id="histoAide">Touche une durée pour la retirer de la moyenne (ou la remettre).</p>
     <div id="blocDefaut" class="info" style="margin-top:14px">
       <label for="dureeDefaut" style="color:var(--doux)">Durée estimée d'une pile</label>
       <select id="dureeDefaut"></select>
@@ -181,7 +184,7 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
 (function(){
   const JOUR = 86400000, NB_MOYENNE = 6, CLE = "suivi-piles";
   const LETTRES = ["D","L","M","M","J","V","S"];
-  let etat = { dates: [], dureeDefaut: 7 };
+  let etat = { dates: [], dureeDefaut: 7, exclues: [] };
   let db = null, qRappel = -1, suppArme = null, jourChoisi = null;
   let moisVu = new Date(); moisVu.setDate(1);
 
@@ -196,14 +199,16 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
   const courte = (s) => fmt(versDate(s), { day:"numeric", month:"short", year:"numeric" });
   const virgule = (n) => n.toFixed(1).replace(".", ",").replace(",0","");
   const jours = (n) => n + " jour" + (Math.abs(n) > 1 ? "s" : "");
+  const listeTextes = (v) => Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
 
   function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("vu"); clearTimeout(toast.h); toast.h=setTimeout(()=>el.classList.remove("vu"),2200); }
 
   function calculs(){
     const d = [...new Set(etat.dates)].sort();
     const piles = [];
-    for (let i=1;i<d.length;i++) piles.push({ debut:d[i-1], fin:d[i], jours: ecart(d[i-1], d[i]) });
-    const recentes = piles.slice(-NB_MOYENNE).map(p => p.jours);
+    // une pile exclue est repérée par sa date de début
+    for (let i=1;i<d.length;i++) piles.push({ debut:d[i-1], fin:d[i], jours: ecart(d[i-1], d[i]), exclue: etat.exclues.includes(d[i-1]) });
+    const recentes = piles.filter(p => !p.exclue).slice(-NB_MOYENNE).map(p => p.jours);
     const moyenne = recentes.length ? recentes.reduce((a,b)=>a+b,0)/recentes.length : etat.dureeDefaut;
     const pas = Math.max(1, Math.round(moyenne));
     const derniere = d[d.length-1] || null;
@@ -242,7 +247,7 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
     ph.textContent = r > 1 ? `Tout va bien,\nencore ${jours(r)}.` : r === 1 ? "Bientôt,\nplus qu'un jour." : r === 0 ? "C'est le jour,\nà changer aujourd'hui." : `Pile à changer,\n${jours(-r)} de retard.`;
     ph.style.color = r < 0 ? "var(--rouge)" : "var(--texte)";
     $("iProchain").textContent = fmt(c.prevue, { weekday:"short", day:"numeric", month:"short" }) + (c.estime ? " (estim.)" : "");
-    $("iMoy").textContent = c.piles.length ? virgule(c.moyenne) + " jours" : "–";
+    $("iMoy").textContent = c.estime ? "–" : virgule(c.moyenne) + " jours";
     const total = Math.min(21, Math.max(c.pas, c.ecoules + 1));
     zone.style.gridTemplateColumns = `repeat(${total},minmax(0,1fr))`;
     for (let i=0;i<total;i++){
@@ -262,15 +267,17 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
   }
 
   function rendreDonnees(c){
-    const js = c.piles.map(p => p.jours);
-    $("phraseData").textContent = js.length ? `${js.length} pile${js.length>1?"s":""},\n${virgule(c.moyenne)} jours en moyenne.` : "Pas encore\nde données.";
+    // les piles exclues ne comptent ni dans la moyenne, ni dans la plus longue / plus courte, ni dans la tendance
+    const js = c.piles.filter(p => !p.exclue).map(p => p.jours);
+    const nbExclues = c.piles.length - js.length;
+    $("phraseData").textContent = js.length ? `${c.piles.length} pile${c.piles.length>1?"s":""},\n${virgule(c.moyenne)} jours en moyenne.` : c.piles.length ? `${c.piles.length} pile${c.piles.length>1?"s":""},\ntoutes hors moyenne.` : "Pas encore\nde données.";
     $("dMoy").textContent = js.length ? virgule(c.moyenne) + " jours" : "–";
-    $("dNb").textContent = js.length;
+    $("dNb").textContent = c.piles.length + (nbExclues ? ` (${nbExclues} hors moyenne)` : "");
     $("dMax").textContent = js.length ? jours(Math.max(...js)) : "–";
     $("dMin").textContent = js.length ? jours(Math.min(...js)) : "–";
 
     const zone = $("graphDurees");
-    if (!js.length){ zone.innerHTML = '<p class="note" style="margin:0">Le graphique apparaît après deux changements.</p>'; $("tendance").textContent = ""; }
+    if (!c.piles.length){ zone.innerHTML = '<p class="note" style="margin:0">Le graphique apparaît après deux changements.</p>'; $("tendance").textContent = ""; }
     else {
       const liste = c.piles.slice(-14);
       const W = 400, H = 170, bas = 22, haut = 18;
@@ -280,17 +287,19 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
       let svg = `<svg class="graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Durée de chaque pile en jours">`;
       liste.forEach((p,i) => {
         const x = i*pasX + (pasX - w)/2;
-        svg += `<rect x="${x}" y="${y(p.jours)}" width="${w}" height="${y(0)-y(p.jours)}" rx="7" fill="#B4C6FE"><title>${courte(p.debut)} → ${courte(p.fin)} : ${p.jours} j</title></rect>`;
-        svg += `<text x="${x+w/2}" y="${y(p.jours)-5}" text-anchor="middle" style="fill:#25273A">${p.jours}</text>`;
+        svg += `<rect x="${x}" y="${y(p.jours)}" width="${w}" height="${y(0)-y(p.jours)}" rx="7" fill="${p.exclue ? "#EDEEF5" : "#B4C6FE"}"><title>${courte(p.debut)} → ${courte(p.fin)} : ${p.jours} j${p.exclue ? " (hors moyenne)" : ""}</title></rect>`;
+        svg += `<text x="${x+w/2}" y="${y(p.jours)-5}" text-anchor="middle" style="fill:${p.exclue ? "#A3A6BA" : "#25273A"}">${p.jours}</text>`;
         if (i===0 || i===liste.length-1) svg += `<text x="${x+w/2}" y="${H-5}" text-anchor="middle">${fmt(versDate(p.debut),{day:"numeric",month:"short"})}</text>`;
       });
-      svg += `<line x1="0" x2="${W}" y1="${y(c.moyenne)}" y2="${y(c.moyenne)}" stroke="#94ABF2" stroke-width="1.5" stroke-dasharray="4 4"/></svg>`;
+      if (js.length) svg += `<line x1="0" x2="${W}" y1="${y(c.moyenne)}" y2="${y(c.moyenne)}" stroke="#94ABF2" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+      svg += `</svg>`;
       zone.innerHTML = svg;
       if (js.length >= 6){
         const r = js.slice(-3), a = js.slice(0,-3);
         const diff = r.reduce((x,y)=>x+y,0)/3 - a.reduce((x,y)=>x+y,0)/a.length;
         $("tendance").textContent = Math.abs(diff) < 0.5 ? "Tes dernières piles tiennent comme d'habitude." : `Tes 3 dernières piles ont tenu ${virgule(Math.abs(diff))} j de ${diff>0?"plus":"moins"}.`;
-      } else $("tendance").textContent = "Pointillés : ta moyenne.";
+      } else $("tendance").textContent = "Pointillés : ta moyenne." + (nbExclues ? " Barres grises : hors moyenne." : "");
+      if (js.length >= 6 && nbExclues) $("tendance").textContent += " Barres grises : hors moyenne.";
     }
 
     const ul = $("histo"); ul.innerHTML = "";
@@ -298,19 +307,32 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
     inv.forEach((s, idx) => {
       const li = document.createElement("li");
       const t = document.createElement("span"); t.textContent = courte(s);
-      const du = document.createElement("span"); du.className = "duree";
-      du.textContent = idx === 0 ? "en cours" : jours(ecart(s, inv[idx-1]));
+      let du;
+      if (idx === 0){
+        du = document.createElement("span"); du.className = "duree"; du.textContent = "en cours";
+      } else {
+        const exclue = etat.exclues.includes(s);
+        du = document.createElement("button"); du.className = "duree" + (exclue ? " exclue" : "");
+        du.textContent = jours(ecart(s, inv[idx-1])) + (exclue ? " · hors moyenne" : "");
+        du.setAttribute("aria-pressed", String(exclue));
+        du.setAttribute("aria-label", `Pile du ${courte(s)} : ` + (exclue ? "remettre dans la moyenne" : "retirer de la moyenne"));
+        du.onclick = () => {
+          etat.exclues = exclue ? etat.exclues.filter(v => v !== s) : [...etat.exclues, s];
+          sauver(); toast(exclue ? "Remise dans la moyenne" : "Retirée de la moyenne");
+        };
+      }
       const x = document.createElement("button"); x.className = "suppr";
       x.textContent = suppArme === s ? "Retirer ?" : "×";
       if (suppArme === s) x.classList.add("confirme");
       x.setAttribute("aria-label", `Retirer le ${courte(s)}`);
       x.onclick = () => {
-        if (suppArme === s){ etat.dates = etat.dates.filter(v => v !== s); suppArme = null; sauver(); toast("Date retirée"); }
+        if (suppArme === s){ etat.dates = etat.dates.filter(v => v !== s); etat.exclues = etat.exclues.filter(v => v !== s); suppArme = null; sauver(); toast("Date retirée"); }
         else { suppArme = s; rendre(); setTimeout(()=>{ if (suppArme===s){ suppArme=null; rendre(); } }, 4000); }
       };
       li.append(t, du, x); ul.append(li);
     });
     $("histoVide").hidden = c.d.length > 0;
+    $("histoAide").hidden = c.piles.length === 0;
     $("blocDefaut").hidden = c.piles.length > 0;
     $("dureeDefaut").value = String(etat.dureeDefaut);
   }
@@ -342,7 +364,7 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
     else {
       const lib = fmt(versDate(jourChoisi),{weekday:"long",day:"numeric",month:"long"});
       const idx = c.d.indexOf(jourChoisi);
-      if (idx >= 0){ const suiv = c.d[idx+1]; det.textContent = `${lib} · pile changée` + (suiv ? ` · a tenu ${jours(ecart(jourChoisi, suiv))}` : " · en cours"); }
+      if (idx >= 0){ const suiv = c.d[idx+1]; det.textContent = `${lib} · pile changée` + (suiv ? ` · a tenu ${jours(ecart(jourChoisi, suiv))}` + (etat.exclues.includes(jourChoisi) ? " (hors moyenne)" : "") : " · en cours"); }
       else if (c.prevusIso.includes(jourChoisi)) det.textContent = `${lib} · changement prévu`;
       else { const avant = c.d.filter(s => s < jourChoisi).pop(); det.textContent = avant && jourChoisi <= aujIso ? `${lib} · jour ${ecart(avant, jourChoisi)+1} de la pile` : lib; }
     }
@@ -389,7 +411,7 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
   /* enregistrement : en ligne dans Claude, sinon sur l'appareil */
   async function sauver(){
     rendre();
-    const donnees = { dates: [...new Set(etat.dates)].sort(), dureeDefaut: etat.dureeDefaut };
+    const donnees = { dates: [...new Set(etat.dates)].sort(), dureeDefaut: etat.dureeDefaut, exclues: [...new Set(etat.exclues)].sort() };
     try { localStorage.setItem(CLE, JSON.stringify(donnees)); } catch(e){}
     if (db){ try { await db.doc("suivi/piles").set(donnees); } catch(e){ toast("Pas pu enregistrer, réessaie"); } }
   }
@@ -415,7 +437,7 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
   $("moisSuiv").onclick = () => { moisVu = new Date(moisVu.getFullYear(), moisVu.getMonth()+1, 1); rendreAgenda(calculs()); };
 
   try { const o = localStorage.getItem(CLE+"-onglet"); if (onglets.includes(o)) ouvrir(o); } catch(e){}
-  try { const l = JSON.parse(localStorage.getItem(CLE) || "null"); if (l && Array.isArray(l.dates)) etat = { dates:[...l.dates], dureeDefaut:l.dureeDefaut||7 }; } catch(e){}
+  try { const l = JSON.parse(localStorage.getItem(CLE) || "null"); if (l && Array.isArray(l.dates)) etat = { dates:[...l.dates], dureeDefaut:l.dureeDefaut||7, exclues: listeTextes(l.exclues) }; } catch(e){}
   rendre();
 
   (async () => {
@@ -426,9 +448,9 @@ h2{font-family:"Unbounded",system-ui,sans-serif;font-weight:300;font-size:15px;m
       const snap = await db.doc("suivi/piles").get();
       if (snap.exists){
         const v = snap.data();
-        etat = { dates: Array.isArray(v.dates) ? v.dates.filter(x => typeof x === "string") : [], dureeDefaut: Number(v.dureeDefaut) || 7 };
+        etat = { dates: listeTextes(v.dates), dureeDefaut: Number(v.dureeDefaut) || 7, exclues: listeTextes(v.exclues) };
       } else if (etat.dates.length){
-        await db.doc("suivi/piles").set({ dates: [...etat.dates], dureeDefaut: etat.dureeDefaut });
+        await db.doc("suivi/piles").set({ dates: [...etat.dates], dureeDefaut: etat.dureeDefaut, exclues: [...etat.exclues] });
       }
       rendre();
     } catch(e){}
